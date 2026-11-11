@@ -1,0 +1,1188 @@
+ <!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Моё хранилище</title>
+
+<script src="https://cdn.jsdelivr.net/npm/appwrite@29.2.0"></script>
+
+<style>
+:root {
+    --bg:#7779B9;
+    --card:#8587C5;
+    --dark:#202844;
+    --hover:#303F83;
+    --lilac:#B4A1D5;
+    --burgundy:#704567;
+    --white:#fff;
+    --muted:#E2E3F5;
+}
+
+* {
+    box-sizing:border-box;
+}
+
+body {
+    margin:0;
+    padding:20px;
+    background:var(--bg);
+    color:var(--white);
+    font-family:Arial,sans-serif;
+}
+
+.container {
+    max-width:850px;
+    margin:auto;
+}
+
+header {
+    text-align:center;
+    margin-bottom:25px;
+}
+
+header h1 {
+    font-size:30px;
+    margin-bottom:8px;
+}
+
+header p {
+    color:var(--muted);
+}
+
+.card {
+    background:var(--card);
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:20px;
+    box-shadow:0 3px 10px rgba(0,0,0,.15);
+}
+
+button,input,select {
+    font:inherit;
+}
+
+button {
+    background:var(--dark);
+    color:white;
+    border:0;
+    border-radius:8px;
+    padding:11px 16px;
+    cursor:pointer;
+    margin:4px;
+}
+
+button:hover {
+    background:var(--hover);
+}
+
+button:disabled {
+    opacity:.5;
+}
+
+input,select {
+    width:100%;
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:8px;
+    margin:7px 0 15px;
+    background:white;
+    color:#222;
+}
+
+label {
+    display:block;
+    font-weight:bold;
+}
+
+.hidden {
+    display:none!important;
+}
+
+.tabs {
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    margin-bottom:20px;
+}
+
+.tabs button {
+    flex:1;
+    min-width:95px;
+}
+
+.tabs button.active {
+    background:var(--burgundy);
+}
+
+.file-card {
+    background:rgba(255,255,255,.15);
+    padding:15px;
+    border-radius:10px;
+    margin-bottom:14px;
+    overflow-wrap:anywhere;
+}
+
+.file-card h3 {
+    margin-top:0;
+}
+
+.file-card img,
+.file-card video {
+    max-width:100%;
+    max-height:350px;
+    border-radius:8px;
+    display:block;
+    margin:10px auto;
+}
+
+.file-card img {
+    width:100%;
+    object-fit:contain;
+    cursor:zoom-in;
+    background:rgba(0,0,0,.12);
+}
+
+.file-card audio {
+    width:100%;
+    margin:10px 0;
+}
+
+.file-info {
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.7;
+    margin-top:10px;
+    white-space:pre-line;
+}
+
+.download-button {
+    display:inline-block;
+    background:var(--dark);
+    color:white;
+    text-decoration:none;
+    border-radius:8px;
+    padding:11px 16px;
+    margin:4px;
+}
+
+.download-button:hover {
+    background:var(--hover);
+}
+
+.status {
+    padding:10px;
+    margin-top:10px;
+    border-radius:7px;
+    background:rgba(0,0,0,.15);
+    overflow-wrap:anywhere;
+}
+
+.empty {
+    text-align:center;
+    padding:30px;
+    color:var(--muted);
+}
+
+.toolbar {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+}
+
+.image-modal {
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.94);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:9999;
+    padding:20px;
+}
+
+.image-modal img {
+    max-width:100%;
+    max-height:90vh;
+    object-fit:contain;
+}
+
+.image-modal button {
+    position:absolute;
+    top:15px;
+    right:15px;
+    font-size:22px;
+}
+
+footer {
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    margin-top:25px;
+}
+
+@media(max-width:500px) {
+    body {
+        padding:10px;
+    }
+
+    .card {
+        padding:14px;
+    }
+
+    header h1 {
+        font-size:24px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<header>
+    <h1>📁 Моё хранилище</h1>
+    <p>Личный архив документов, фотографий, видео и музыки</p>
+</header>
+
+<!-- ВХОД -->
+
+<div class="card" id="authSection">
+
+    <h2>🔐 Вход владельца</h2>
+
+    <p>
+        Просматривать архив можно без авторизации.
+        Для управления файлами необходимо войти.
+    </p>
+
+    <label>Email</label>
+    <input type="email" id="email"
+           placeholder="Ваш Email">
+
+    <label>Пароль</label>
+    <input type="password" id="password"
+           placeholder="Ваш пароль">
+
+    <button id="loginButton" onclick="login()">
+        Войти
+    </button>
+
+    <div id="authStatus" class="status hidden"></div>
+
+</div>
+
+<!-- УПРАВЛЕНИЕ -->
+
+<div class="card hidden" id="adminSection">
+
+    <div class="toolbar">
+        <h2>⚙ Управление архивом</h2>
+        <button onclick="logout()">Выйти</button>
+    </div>
+
+    <label>Категория</label>
+
+    <select id="uploadCategory">
+        <option value="images">📷 Фото</option>
+        <option value="video">🎬 Видео</option>
+        <option value="music">🎵 Музыка</option>
+        <option value="pdf">📄 Документы PDF</option>
+        <option value="text">📝 Текстовые файлы</option>
+        <option value="archive">📦 ZIP-архивы</option>
+        <option value="other">📁 Другие файлы</option>
+    </select>
+
+    <label>Выберите файлы</label>
+
+    <input type="file" id="fileInput" multiple>
+
+    <button id="uploadButton" onclick="uploadFiles()">
+        ⬆ Загрузить в облако
+    </button>
+
+    <div id="uploadStatus" class="status hidden"></div>
+
+</div>
+
+<!-- АРХИВ -->
+
+<div class="card">
+
+    <div class="toolbar">
+        <h2>☁ Мой архив</h2>
+        <button onclick="loadFiles()">⟳ Обновить</button>
+    </div>
+
+    <div class="tabs">
+
+        <button class="active"
+                onclick="selectCategory('all',this)">Все</button>
+
+        <button onclick="selectCategory('images',this)">📷 Фото</button>
+
+        <button onclick="selectCategory('video',this)">🎬 Видео</button>
+
+        <button onclick="selectCategory('music',this)">🎵 Музыка</button>
+
+        <button onclick="selectCategory('pdf',this)">📄 PDF</button>
+
+        <button onclick="selectCategory('text',this)">📝 Текст</button>
+
+        <button onclick="selectCategory('archive',this)">📦 ZIP</button>
+
+        <button onclick="selectCategory('other',this)">📁 Другие</button>
+
+    </div>
+
+    <div id="fileList">
+        <div class="empty">Загрузка архива...</div>
+    </div>
+
+    <div id="mainStatus" class="status hidden"></div>
+
+</div>
+
+<footer>
+    Моё хранилище · Appwrite Cloud
+</footer>
+
+</div>
+
+<!-- УВЕЛИЧЕНИЕ ФОТО -->
+
+<div id="imageModal"
+     class="image-modal hidden"
+     onclick="closeImage()">
+
+    <button onclick="closeImage()">✕</button>
+
+    <img id="modalImage"
+         src=""
+         alt="Фотография"
+         onclick="event.stopPropagation()">
+
+</div>
+
+
+<script>
+
+// ==========================================
+// 1. НАСТРОЙКИ APPWRITE
+// ==========================================
+
+const APPWRITE_ENDPOINT =
+    'https://fra.cloud.appwrite.io/v1';
+
+const APPWRITE_PROJECT_ID =
+    '6af4769b000909d6d11f';
+
+const BUCKET_ID =
+    '6af4774e0005e08be96e';
+
+const ADMIN_USER_ID =
+    '6af47cf8003c7095ed8e';
+
+const MAX_FILE_SIZE =
+    50 * 1024 * 1024;
+
+const CATEGORY_PREFIX =
+    '__myarchive_';
+
+
+// ==========================================
+// 2. ПОДКЛЮЧЕНИЕ
+// ==========================================
+
+const client = new Appwrite.Client()
+    .setEndpoint(APPWRITE_ENDPOINT)
+    .setProject(APPWRITE_PROJECT_ID);
+
+const account = new Appwrite.Account(client);
+
+const storage = new Appwrite.Storage(client);
+
+const {ID, Query, Permission, Role} = Appwrite;
+
+let currentUser = null;
+
+let currentCategory = 'all';
+
+let allFiles = [];
+
+
+// ==========================================
+// 3. КАТЕГОРИИ
+// ==========================================
+
+const categories = {
+    images:'Фотографии',
+    video:'Видео',
+    music:'Музыка',
+    pdf:'PDF-документы',
+    text:'Текстовые файлы',
+    archive:'ZIP-архивы',
+    other:'Другие файлы'
+};
+
+
+// ==========================================
+// 4. ОПРЕДЕЛЕНИЕ ТИПА
+// ==========================================
+
+function detectCategory(file) {
+
+    const name = String(file.name || '').toLowerCase();
+
+    const mime = String(
+        file.mimeType || file.type || ''
+    ).toLowerCase();
+
+    const ext = name.split('.').pop();
+
+    if(mime.startsWith('image/')) return 'images';
+
+    if(mime.startsWith('video/')) return 'video';
+
+    if(mime.startsWith('audio/')) return 'music';
+
+    if(mime === 'application/pdf' || ext === 'pdf')
+        return 'pdf';
+
+    if(ext === 'zip' || mime.includes('zip'))
+        return 'archive';
+
+    if(
+        ['txt','md','csv','json','xml','log'].includes(ext) ||
+        mime.startsWith('text/')
+    ) return 'text';
+
+    return 'other';
+}
+
+
+// ==========================================
+// 5. КАТЕГОРИЯ И ИМЯ
+// ==========================================
+
+function getCategory(file) {
+
+    const match = file.name.match(
+        /^__myarchive_(images|video|music|pdf|text|archive|other)__/
+    );
+
+    return match ? match[1] : detectCategory(file);
+}
+
+
+function getDisplayName(file) {
+
+    return file.name.replace(
+        /^__myarchive_(images|video|music|pdf|text|archive|other)__/,
+        ''
+    );
+
+}
+
+
+function prepareFile(file,category) {
+
+    const prefix = CATEGORY_PREFIX + category + '__';
+
+    const storedName =
+        prefix + file.name.substring(0,255-prefix.length);
+
+    return new File(
+        [file],
+        storedName,
+        {
+            type:file.type,
+            lastModified:file.lastModified
+        }
+    );
+
+}
+
+
+// ==========================================
+// 6. ФОРМАТИРОВАНИЕ
+// ==========================================
+
+function formatSize(bytes) {
+
+    if(bytes < 1024) return bytes + ' Б';
+
+    if(bytes < 1048576)
+        return (bytes/1024).toFixed(1) + ' КБ';
+
+    return (bytes/1048576).toFixed(2) + ' МБ';
+
+}
+
+
+function formatDate(date) {
+
+    return new Date(date).toLocaleString('ru-RU');
+
+}
+
+
+// ==========================================
+// 7. СООБЩЕНИЯ
+// ==========================================
+
+function showMessage(id,text) {
+
+    const element = document.getElementById(id);
+
+    element.textContent = text;
+
+    element.classList.remove('hidden');
+
+}
+
+
+function hideMessage(id) {
+
+    document.getElementById(id).classList.add('hidden');
+
+}
+
+
+// ==========================================
+// 8. ПРОВЕРКА ВЛАДЕЛЬЦА
+// ==========================================
+
+function isAdmin() {
+
+    return !!currentUser &&
+        currentUser.$id === ADMIN_USER_ID;
+
+}
+
+
+async function checkSession() {
+
+    try {
+
+        currentUser = await account.get();
+
+    } catch(error) {
+
+        currentUser = null;
+
+    }
+
+    updateInterface();
+
+}
+
+
+function updateInterface() {
+
+    const admin = isAdmin();
+
+    document.getElementById('authSection')
+        .classList.toggle('hidden',admin);
+
+    document.getElementById('adminSection')
+        .classList.toggle('hidden',!admin);
+
+}
+
+
+// ==========================================
+// 9. ВХОД
+// ==========================================
+
+async function login() {
+
+    const email =
+        document.getElementById('email').value.trim();
+
+    const password =
+        document.getElementById('password').value;
+
+    if(!email || !password) {
+
+        showMessage('authStatus','Заполните Email и пароль.');
+
+        return;
+
+    }
+
+    const button =
+        document.getElementById('loginButton');
+
+    button.disabled = true;
+
+    try {
+
+        await account.createEmailPasswordSession({
+            email,
+            password
+        });
+
+        currentUser = await account.get();
+
+        if(!isAdmin()) {
+
+            await account.deleteSession({
+                sessionId:'current'
+            });
+
+            currentUser = null;
+
+            updateInterface();
+
+            showMessage(
+                'authStatus',
+                'Этот аккаунт не является владельцем архива.'
+            );
+
+            return;
+
+        }
+
+        updateInterface();
+
+        hideMessage('authStatus');
+
+        await loadFiles();
+
+    } catch(error) {
+
+        showMessage(
+            'authStatus',
+            'Ошибка входа: ' + error.message
+        );
+
+    } finally {
+
+        button.disabled = false;
+
+    }
+
+}
+
+
+// ==========================================
+// 10. ВЫХОД
+// ==========================================
+
+async function logout() {
+
+    try {
+
+        await account.deleteSession({
+            sessionId:'current'
+        });
+
+    } catch(error) {
+
+        console.error(error);
+
+    }
+
+    currentUser = null;
+
+    updateInterface();
+
+    await loadFiles();
+
+}
+
+
+// ==========================================
+// 11. ЗАГРУЗКА ФАЙЛОВ
+// ==========================================
+
+async function uploadFiles() {
+
+    if(!isAdmin()) {
+
+        alert('Нет доступа к загрузке.');
+
+        return;
+
+    }
+
+    const input =
+        document.getElementById('fileInput');
+
+    const selectedCategory =
+        document.getElementById('uploadCategory').value;
+
+    const files = Array.from(input.files);
+
+    if(!files.length) {
+
+        alert('Выберите файлы.');
+
+        return;
+
+    }
+
+    const button =
+        document.getElementById('uploadButton');
+
+    button.disabled = true;
+
+    let success = 0;
+
+    let errors = 0;
+
+    for(let i=0;i<files.length;i++) {
+
+        const file = files[i];
+
+        if(file.size > MAX_FILE_SIZE) {
+
+            errors++;
+
+            showMessage(
+                'uploadStatus',
+                `Файл ${file.name} превышает ограничение 50 МБ.`
+            );
+
+            continue;
+
+        }
+
+        try {
+
+            const detected = detectCategory(file);
+
+            const category =
+                detected !== 'other'
+                    ? detected
+                    : selectedCategory;
+
+            const preparedFile =
+                prepareFile(file,category);
+
+            showMessage(
+                'uploadStatus',
+                `Загрузка ${i+1} из ${files.length}: ${file.name}`
+            );
+
+            await storage.createFile({
+
+                bucketId:BUCKET_ID,
+
+                fileId:ID.unique(),
+
+                file:preparedFile,
+
+                permissions:[
+                    Permission.read(Role.any()),
+                    Permission.update(Role.user(ADMIN_USER_ID)),
+                    Permission.delete(Role.user(ADMIN_USER_ID))
+                ]
+
+            });
+
+            success++;
+
+        } catch(error) {
+
+            errors++;
+
+            console.error(error);
+
+            showMessage(
+                'uploadStatus',
+                `Ошибка загрузки ${file.name}: ${error.message}`
+            );
+
+        }
+
+    }
+
+    button.disabled = false;
+
+    input.value = '';
+
+    showMessage(
+        'uploadStatus',
+        `Завершено. Успешно: ${success}. Ошибок: ${errors}.`
+    );
+
+    await loadFiles();
+
+}
+
+
+// ==========================================
+// 12. СПИСОК ФАЙЛОВ
+// ==========================================
+
+async function loadFiles() {
+
+    const list = document.getElementById('fileList');
+
+    list.innerHTML =
+        '<div class="empty">Загрузка...</div>';
+
+    try {
+
+        const response = await storage.listFiles({
+
+            bucketId:BUCKET_ID,
+
+            queries:[
+                Query.limit(100),
+                Query.orderDesc('$createdAt')
+            ]
+
+        });
+
+        allFiles = response.files || [];
+
+        renderFiles();
+
+    } catch(error) {
+
+        console.error(error);
+
+        list.innerHTML = '';
+
+        const message = document.createElement('div');
+
+        message.className = 'empty';
+
+        message.textContent =
+            'Ошибка загрузки архива: ' + error.message;
+
+        list.appendChild(message);
+
+    }
+
+}
+
+
+// ==========================================
+// 13. ВЫБОР КАТЕГОРИИ
+// ==========================================
+
+function selectCategory(category,button) {
+
+    currentCategory = category;
+
+    document.querySelectorAll('.tabs button')
+        .forEach(btn => btn.classList.remove('active'));
+
+    button.classList.add('active');
+
+    renderFiles();
+
+}
+
+
+// ==========================================
+// 14. УВЕЛИЧЕНИЕ ФОТО
+// ==========================================
+
+function openImage(url) {
+
+    document.getElementById('modalImage').src = url;
+
+    document.getElementById('imageModal')
+        .classList.remove('hidden');
+
+    document.body.style.overflow = 'hidden';
+
+}
+
+
+function closeImage() {
+
+    document.getElementById('imageModal')
+        .classList.add('hidden');
+
+    document.getElementById('modalImage').src = '';
+
+    document.body.style.overflow = '';
+
+}
+
+
+document.addEventListener('keydown',event => {
+
+    if(event.key === 'Escape') closeImage();
+
+});
+
+
+// ==========================================
+// 15. ОТОБРАЖЕНИЕ ФАЙЛОВ
+// ==========================================
+
+function renderFiles() {
+
+    const list = document.getElementById('fileList');
+
+    list.innerHTML = '';
+
+    const files = allFiles.filter(file => {
+
+        return currentCategory === 'all' ||
+            getCategory(file) === currentCategory;
+
+    });
+
+    if(!files.length) {
+
+        list.innerHTML = `
+            <div class="empty">
+                В этой категории пока нет файлов.
+            </div>
+        `;
+
+        return;
+
+    }
+
+    files.forEach(file => {
+
+        const card = document.createElement('div');
+
+        card.className = 'file-card';
+
+        const category = getCategory(file);
+
+        const name = getDisplayName(file);
+
+        const viewURL = storage.getFileView({
+            bucketId:BUCKET_ID,
+            fileId:file.$id
+        }).toString();
+
+        const downloadURL = storage.getFileDownload({
+            bucketId:BUCKET_ID,
+            fileId:file.$id
+        }).toString();
+
+        const title = document.createElement('h3');
+
+        title.textContent = name;
+
+        card.appendChild(title);
+
+
+        // ФОТО
+
+        if(category === 'images') {
+
+            const image = document.createElement('img');
+
+            image.alt = name;
+
+            image.loading = 'lazy';
+
+            image.src = storage.getFilePreview({
+
+                bucketId:BUCKET_ID,
+
+                fileId:file.$id,
+
+                width:800,
+
+                height:600,
+
+                quality:80
+
+            }).toString();
+
+            image.onerror = function() {
+
+                this.onerror = null;
+
+                this.src = viewURL;
+
+            };
+
+            image.onclick = () => openImage(viewURL);
+
+            card.appendChild(image);
+
+        }
+
+
+        // ВИДЕО
+
+        else if(category === 'video') {
+
+            const video = document.createElement('video');
+
+            video.controls = true;
+
+            video.preload = 'metadata';
+
+            const source = document.createElement('source');
+
+            source.src = viewURL;
+
+            source.type = file.mimeType || 'video/mp4';
+
+            video.appendChild(source);
+
+            card.appendChild(video);
+
+        }
+
+
+        // МУЗЫКА
+
+        else if(category === 'music') {
+
+            const audio = document.createElement('audio');
+
+            audio.controls = true;
+
+            audio.preload = 'none';
+
+            const source = document.createElement('source');
+
+            source.src = viewURL;
+
+            source.type = file.mimeType || '';
+
+            audio.appendChild(source);
+
+            card.appendChild(audio);
+
+        }
+
+
+        // PDF
+
+        else if(category === 'pdf') {
+
+            const link = document.createElement('a');
+
+            link.href = viewURL;
+
+            link.target = '_blank';
+
+            link.rel = 'noopener noreferrer';
+
+            link.textContent = '📄 Открыть PDF';
+
+            link.style.color = 'white';
+
+            card.appendChild(link);
+
+        }
+
+
+        // ИНФОРМАЦИЯ
+
+        const info = document.createElement('div');
+
+        info.className = 'file-info';
+
+        info.textContent =
+            'Категория: ' + (categories[category] || 'Другие файлы') +
+            '\nРазмер: ' + formatSize(file.sizeOriginal) +
+            '\nДата: ' + formatDate(file.$createdAt);
+
+        card.appendChild(info);
+
+
+        // КНОПКИ
+
+        const actions = document.createElement('div');
+
+        const download = document.createElement('a');
+
+        download.href = downloadURL;
+
+        download.className = 'download-button';
+
+        download.textContent = '⬇ Скачать';
+
+        download.setAttribute('download',name);
+
+        actions.appendChild(download);
+
+
+        // УДАЛЕНИЕ
+
+        if(isAdmin()) {
+
+            const deleteButton = document.createElement('button');
+
+            deleteButton.textContent = '🗑 Удалить';
+
+            deleteButton.onclick = () => {
+
+                deleteFile(file.$id,name);
+
+            };
+
+            actions.appendChild(deleteButton);
+
+        }
+
+        card.appendChild(actions);
+
+        list.appendChild(card);
+
+    });
+
+}
+
+
+// ==========================================
+// 16. УДАЛЕНИЕ
+// ==========================================
+
+async function deleteFile(fileId,fileName) {
+
+    if(!isAdmin()) return;
+
+    if(!confirm(`Удалить файл "${fileName}"?`)) return;
+
+    try {
+
+        await storage.deleteFile({
+
+            bucketId:BUCKET_ID,
+
+            fileId:fileId
+
+        });
+
+        showMessage('mainStatus','Файл успешно удалён.');
+
+        await loadFiles();
+
+    } catch(error) {
+
+        alert('Ошибка удаления: ' + error.message);
+
+    }
+
+}
+
+
+// ==========================================
+// 17. ЗАПУСК
+// ==========================================
+
+document.addEventListener('DOMContentLoaded',async () => {
+
+    await checkSession();
+
+    await loadFiles();
+
+});
+
+</script>
+
+</body>
+</html>
